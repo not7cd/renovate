@@ -8,21 +8,19 @@ export function sortPackageFiles(
 ): PackageFile[] {
   const result: PackageFile[] = [];
   const graph: ReturnType<typeof Graph> = Graph();
-  depsBetweenFiles.forEach(({ sourceFile, outputFile }) => {
+  for (const { sourceFile, outputFile } of depsBetweenFiles) {
     graph.addEdge(sourceFile, outputFile);
-  });
-  const sorted = graph.topologicalSort();
-  for (const file of sorted) {
+  }
+  const order = graph.topologicalSort();
+  for (const file of order) {
     if (packageFiles.has(file)) {
       const packageFile = packageFiles.get(file)!;
-      const sortedLockFiles = [];
       // TODO(not7cd): this needs better test case
-      for (const lockFile of packageFile.lockFiles!) {
-        if (sorted.includes(lockFile)) {
-          sortedLockFiles.push(lockFile);
-        }
+      if (packageFile.lockFiles) {
+        packageFile.lockFiles.sort(function (a, b) {
+          return order.indexOf(b) - order.indexOf(a);
+        });
       }
-      packageFile.lockFiles = sortedLockFiles;
       result.push(packageFile);
     }
   }
