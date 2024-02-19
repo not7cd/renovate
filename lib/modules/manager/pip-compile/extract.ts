@@ -2,7 +2,10 @@ import { Graph } from 'graph-data-structure';
 import { logger } from '../../../logger';
 import { readLocalFile } from '../../../util/fs';
 import { normalizeDepName } from '../../datasource/pypi/common';
-import { extractPackageFile as extractRequirementsFile } from '../pip_requirements/extract';
+import {
+  cleanRegistryUrls,
+  extractPackageFile as extractRequirementsFile,
+} from '../pip_requirements/extract';
 import { extractPackageFile as extractSetupPyFile } from '../pip_setup';
 import type { ExtractConfig, PackageFile, PackageFileContent } from '../types';
 import { extractHeaderCommand } from './common';
@@ -161,6 +164,19 @@ export async function extractAllPackageFiles(
               'pip-compile: dependency not found in lock file',
             );
           }
+        }
+        if (compileArgs.indexUrl) {
+          packageFileContent.registryUrls = cleanRegistryUrls([
+            compileArgs.indexUrl,
+          ]);
+        }
+        if (compileArgs.extraIndexUrl) {
+          if (!packageFileContent.additionalRegistryUrls) {
+            packageFileContent.additionalRegistryUrls = [];
+          }
+          packageFileContent.additionalRegistryUrls?.push(
+            ...cleanRegistryUrls(compileArgs.extraIndexUrl),
+          );
         }
         packageFiles.set(packageFile, {
           ...packageFileContent,

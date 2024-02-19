@@ -72,5 +72,7 @@ Renovate reads the `requirements.txt` file and extracts these `pip-compile` argu
 
 - source files as positional arguments
 - `--output-file`
+- `--index-url`
+- `--extra-index-url`
 
 All other allowed `pip-compile` arguments will be passed over without modification.
