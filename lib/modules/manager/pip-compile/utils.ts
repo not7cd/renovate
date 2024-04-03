@@ -4,27 +4,33 @@ import { logger } from '../../../logger';
 import type { PackageFile } from '../types';
 import type { DependencyBetweenFiles, PipCompileArgs } from './types';
 
+function buildGraph(
+  depsBetweenFiles: DependencyBetweenFiles[],
+): ReturnType<typeof Graph> {
+  const graph: ReturnType<typeof Graph> = Graph();
+  depsBetweenFiles.forEach(({ sourceFile, outputFile }) => {
+    graph.addEdge(sourceFile, outputFile);
+  });
+  return graph;
+}
+
+function sortByOrder(arr: string[], order: string[]): string[] {
+  return arr.sort(function (a: any, b: any) {
+    return order.indexOf(b) - order.indexOf(a);
+  });
+}
+
 export function sortPackageFiles(
   depsBetweenFiles: DependencyBetweenFiles[],
   packageFiles: Map<string, PackageFile>,
 ): PackageFile[] {
   const result: PackageFile[] = [];
-  const graph: ReturnType<typeof Graph> = Graph();
-  depsBetweenFiles.forEach(({ sourceFile, outputFile }) => {
-    graph.addEdge(sourceFile, outputFile);
-  });
+  const graph = buildGraph(depsBetweenFiles);
   const sorted = graph.topologicalSort();
   for (const file of sorted) {
     if (packageFiles.has(file)) {
       const packageFile = packageFiles.get(file)!;
-      const sortedLockFiles = [];
-      // TODO(not7cd): this needs better test case
-      for (const lockFile of packageFile.lockFiles!) {
-        if (sorted.includes(lockFile)) {
-          sortedLockFiles.push(lockFile);
-        }
-      }
-      packageFile.lockFiles = sortedLockFiles;
+      packageFile.lockFiles = sortByOrder(packageFile.lockFiles!, sorted);
       result.push(packageFile);
     }
   }
