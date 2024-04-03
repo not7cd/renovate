@@ -1,3 +1,4 @@
+import { all } from 'deepmerge';
 import upath from 'upath';
 import { logger } from '../../../logger';
 import { readLocalFile } from '../../../util/fs';
@@ -18,6 +19,8 @@ import type {
   SupportedManagers,
 } from './types';
 import {
+  adjacentChain,
+  buildGraph,
   generateMermaidGraph,
   inferCommandExecDir,
   sortPackageFiles,
@@ -212,37 +215,20 @@ export async function extractAllPackageFiles(
   if (packageFiles.size === 0) {
     return null;
   }
+  const graph = buildGraph(depsBetweenFiles);
+  for (const packageFile of packageFiles.entries()) {
+    const allDependentNodes = [
+      ...new Set(adjacentChain(graph, packageFile[0])),
+    ];
+    packageFile[1].lockFiles = allDependentNodes.filter((file) =>
+      fileMatches.includes(file),
+    );
+    console.log(packageFile[0], 'allDependentNodes', packageFile[1]);
+  }
   const result: PackageFile[] = sortPackageFiles(
     depsBetweenFiles,
     packageFiles,
   );
-
-  // This needs to go in reverse order to handle transitive dependencies
-  for (const packageFile of [...result].reverse()) {
-    for (const reqFile of packageFile.managerData?.requirementsFiles ?? []) {
-      let sourceFiles: PackageFile[] | undefined = undefined;
-      if (fileMatches.includes(reqFile)) {
-        sourceFiles = lockFileSources.get(reqFile);
-      } else if (packageFiles.has(reqFile)) {
-        sourceFiles = [packageFiles.get(reqFile)!];
-      }
-      if (!sourceFiles) {
-        logger.warn(
-          `pip-compile: ${packageFile.packageFile} references ${reqFile} which does not appear to be a requirements file managed by pip-compile`,
-        );
-        continue;
-      }
-      for (const sourceFile of sourceFiles) {
-        let merged = [...packageFile.lockFiles!];
-        for (const lockFile of [...sourceFile.lockFiles!].reverse()) {
-          if (!merged.includes(lockFile)) {
-            merged = [lockFile, ...merged];
-          }
-        }
-        sourceFile.lockFiles = merged;
-      }
-    }
-  }
   logger.debug(
     'pip-compile: dependency graph:\n' +
       generateMermaidGraph(depsBetweenFiles, lockFileArgs),

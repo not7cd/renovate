@@ -4,7 +4,7 @@ import { logger } from '../../../logger';
 import type { PackageFile } from '../types';
 import type { DependencyBetweenFiles, PipCompileArgs } from './types';
 
-function buildGraph(
+export function buildGraph(
   depsBetweenFiles: DependencyBetweenFiles[],
 ): ReturnType<typeof Graph> {
   const graph: ReturnType<typeof Graph> = Graph();
@@ -14,9 +14,20 @@ function buildGraph(
   return graph;
 }
 
+export function adjacentChain(
+  graph: ReturnType<typeof Graph>,
+  node: string,
+): string[] {
+  const nodes: string[] = graph.adjacent(node);
+  for (const child of nodes) {
+    nodes.push(...adjacentChain(graph, child));
+  }
+  return nodes;
+}
+
 function sortByOrder(arr: string[], order: string[]): string[] {
   return arr.sort(function (a: any, b: any) {
-    return order.indexOf(b) - order.indexOf(a);
+    return order.indexOf(a) - order.indexOf(b);
   });
 }
 
